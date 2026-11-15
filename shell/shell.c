@@ -1,5 +1,8 @@
 #include <stdio.h>
-#define EXIT_SUCCESS 0;
+#include <stdlib.h>
+#include <stdbool.h>
+#define LSH_RL_BUFSIZE 1024;
+
 int main(int argc, char **argv)
 {
     lsh_loop();
@@ -23,4 +26,45 @@ void lsh_loop()
         free(line);
         free(args);
     } while (status);
+}
+
+char *lsh_read_line()
+{
+    int bufsize = LSH_RL_BUFSIZE;
+    int position = 0;
+    char *buffer = malloc(sizeof(char) * bufsize);
+    int c;
+    if (!buffer)
+    {
+        fprintf(stderr, "lsh: allocation error");
+        exit(EXIT_FAILURE);
+    }
+
+    read(stdin, buffer, sizeof(buffer));
+
+    while (true)
+    {
+        c = getchar();
+        if (c == EOF || c == '\n')
+        {
+            buffer[position] = '\0';
+        }
+        else
+        {
+            buffer[position] = c;
+        }
+        position++;
+
+        if (position >= bufsize)
+        {
+            bufsize += LSH_RL_BUFSIZE;
+            buffer = realloc(buffer, bufsize);
+
+            if (!buffer)
+            {
+                fprintf(stderr, "lsh: allocation error\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
 }
