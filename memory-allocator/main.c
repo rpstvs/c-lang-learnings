@@ -50,8 +50,8 @@ int *an_malloc(ssize_t size)
     {
         *(heap_start) = MAGICAL_BYES;
         my_stats *malloc_header = (my_stats *)heap_start;
-        malloc_header.amount_of_blocks = 1;
-        malloc_header.amount_of_pages = 1;
+        malloc_header->amount_of_blocks = 1;
+        malloc_header->amount_of_pages = 1;
         area *firstblock = (area *)((char *)heap_start + sizeof(my_stats));
         firstblock->marker = BLOCK_MARKER;
         firstblock->in_use = false;
@@ -64,4 +64,42 @@ int *an_malloc(ssize_t size)
 
 int *add_used_block(ssize_t size)
 {
+    my_stats *malloc_header = get_malloc_header();
+
+    while (malloc_header->my_simple_lock)
+    {
+        sleep(1);
+    }
+
+    malloc_header->my_simple_lock = true;
+
+    area *block = (area *)((char *)heap_start + sizeof(my_stats));
+    area *smallest_block = NULL;
+    area *last_block = block;
+
+    while (block != NULL)
+    {
+        assert(block->marker == BLOCK_MARKER);
+        if ((block->length + sizeof(area)) >= size && block->in_use == false)
+        {
+            if (smallest_block == NULL || smallest_block->length > block->length)
+            {
+                smallest_block = block;
+            }
+        }
+        last_block = block;
+        block = block->next;
+    }
+
+    if (smallest_block == NULL)
+    {
+        area *last_block = find_last_block();
+        while (last_block->length < size)
+        {
+            sbrk(4096);
+            last_block->length += 4096;
+            malloc_header->amount_of_pages += 1;
+        }
+        smallest_block = last_block;
+    }
 }
