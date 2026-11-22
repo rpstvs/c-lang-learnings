@@ -102,4 +102,31 @@ int *add_used_block(ssize_t size)
         }
         smallest_block = last_block;
     }
+
+    smallest_block->in_use = true;
+
+    int must_have_size = smallest_block->length - size - sizeof(area) - 1;
+    if (must_have_size <= 0)
+    {
+        sbrk(4096);
+        malloc_header->amount_of_pages += 1;
+        last_block->length += 4096;
+        must_have_size = smallest_block->length - size - sizeof(area) - 1;
+    }
+    int remaining_size = must_have_size + 1;
+    malloc_header->amount_of_blocks += 1;
+    area *new_block = (area *)((char *)smallest_block + sizeof(area) + size);
+    new_block->marker = BLOCK_MARKER;
+    new_block->prev = smallest_block;
+    new_block->next = smallest_block->next;
+
+    if (new_block->next != NULL)
+    {
+        (new_block->next)->prev = new_block;
+    }
+    smallest_block->next = new_block;
+    new_block->length = remaining_size;
+    smallest_block->length = size;
+    malloc_header->my_simple_lock = false;
+    return (int *)((char *)smallest_block + sizeof(area));
 }
