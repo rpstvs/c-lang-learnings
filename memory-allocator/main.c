@@ -130,3 +130,25 @@ int *add_used_block(ssize_t size)
     malloc_header->my_simple_lock = false;
     return (int *)((char *)smallest_block + sizeof(area));
 }
+
+bool an_free(void *ptr)
+{
+    my_stats *malloc_header = get_malloc_header();
+
+    while (malloc_header->my_simple_lock)
+    {
+        sleep(1);
+    }
+    malloc_header->my_simple_lock = true;
+
+    area *block = ptr - sizeof(area);
+    if (block->marker != BLOCK_MARKER)
+    {
+        return false;
+    }
+    else
+    {
+        block->in_use = false;
+        memset(ptr, 0, block->length);
+    }
+}
