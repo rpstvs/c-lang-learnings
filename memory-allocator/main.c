@@ -150,5 +150,42 @@ bool an_free(void *ptr)
     {
         block->in_use = false;
         memset(ptr, 0, block->length);
+        if (block->next != NULL && (block->next)->in_use == false)
+        {
+            area *not_used_next_block = block->next;
+            if (not_used_next_block != NULL)
+            {
+                block->next = not_used_next_block->next;
+
+                if (not_used_next_block->next != NULL)
+                {
+                    not_used_next_block->next->prev = block;
+                }
+            }
+            else
+            {
+                block->next = NULL;
+            }
+            memset((void *)not_used_next_block, 0, sizeof(area) + not_used_next_block->length);
+            malloc_header->amount_of_blocks -= 1;
+        }
+        if (block->prev != NULL && (block->prev)->in_use == false)
+        {
+            area *to_delete_block = block;
+            block = block->prev;
+
+            block->length += sizeof(area) + to_delete_block->length;
+
+            block->next = to_delete_block->next;
+
+            if (block->next != NULL)
+            {
+                block->next->prev = block;
+            }
+            malloc_header->amount_of_blocks -= 1;
+        }
+        reduce_heap_size_if_possible();
     }
+    malloc_header->my_simple_lock = false;
+    return true;
 }
