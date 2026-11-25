@@ -189,3 +189,39 @@ bool an_free(void *ptr)
     malloc_header->my_simple_lock = false;
     return true;
 }
+
+void reduce_heap_size_if_possible()
+{
+    area *last_block = find_last_block();
+    area *prev_used_block = find_previous_used_block(last_block);
+
+    if (prev_used_block == NULL)
+    {
+        if (last_block->length > PAGE_SIZE)
+        {
+            last_block->length = PAGE_SIZE;
+        }
+        prev_used_block = last_block;
+    }
+
+    void *new_end = (void *)prev_used_block + sizeof(area) + prev_used_block->length;
+    void *heap_end = sbrk(0);
+    while (new_end < heap_end - PAGE_SIZE)
+    {
+        sbrk(-PAGE_SIZE);
+        heap_end = sbrk(0);
+        my_stats *malloc_header = get_malloc_header();
+        malloc_header->amount_of_pages -= 1;
+    }
+
+    if (heap_end - new_end > sizeof(area) + 1)
+    {
+        area *new_not_used_block = (area *)new_end;
+        new_not_used_block->marker = BLOCK_MARKER;
+        new_not_used_block->in_use = false;
+        new_not_used_block->prev = prev_used_block;
+        new_not_used_block->next = NULL;
+        new_not_used_block->length = heap_end - new_end - sizeof(area);
+        prev_used_block->next = new_not_used_block;
+    }
+}
