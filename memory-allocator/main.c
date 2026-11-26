@@ -27,8 +27,29 @@ typedef struct free_area area;
 
 const int MAGICAL_BYES = 0x55;
 const int BLOCK_MARKER = 0xDD;
+const int PAGE_SIZE = 4096;
 
 char *heap_start;
+
+my_stats *get_malloc_header()
+{
+    my_stats *malloc_header = (my_stats *)heap_start;
+    return malloc_header;
+}
+
+area *find_previous_used_block(area *ptr)
+{
+    area *mov_ptr = ptr;
+    while (mov_ptr->prev != NULL)
+    {
+        mov_ptr = mov_ptr->prev;
+        if (mov_ptr->in_use == true)
+        {
+            return mov_ptr;
+        }
+    }
+    return NULL;
+}
 
 int main(int argc, char **argv)
 {
