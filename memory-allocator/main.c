@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <unistd.h>
+#include <assert.h>
+#include <string.h>
+#include <sys/wait.h>
 
 struct free_area
 {
@@ -13,7 +16,8 @@ struct free_area
     uint32_t length;
     struct free_area *next;
 };
-
+void reduce_heap_size_if_possible();
+int *add_used_block(ssize_t size);
 struct stats
 {
     int magical_bytes;
@@ -49,6 +53,18 @@ area *find_previous_used_block(area *ptr)
         }
     }
     return NULL;
+}
+
+area *find_last_block()
+{
+    my_stats *malloc_header = get_malloc_header();
+    area *block = (area *)((char *)malloc_header + sizeof(my_stats));
+
+    while (block->next != NULL)
+    {
+        block = block->next;
+    }
+    return block;
 }
 
 int main(int argc, char **argv)
@@ -244,5 +260,28 @@ void reduce_heap_size_if_possible()
         new_not_used_block->next = NULL;
         new_not_used_block->length = heap_end - new_end - sizeof(area);
         prev_used_block->next = new_not_used_block;
+    }
+}
+
+void call_test(void *(test_func)(), const char *msg)
+{
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        test_func();
+        exit(0);
+    }
+    else
+    {
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFSIGNALED(status))
+        {
+            printf("%s crashed with signal %d\n", msg, WTERMSIG(status));
+        }
+        else
+        {
+            printf("%s passed\n", msg);
+        }
     }
 }
