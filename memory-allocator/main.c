@@ -18,6 +18,8 @@ struct free_area
 };
 void reduce_heap_size_if_possible();
 int *add_used_block(ssize_t size);
+void test_bigger_than_available_malloc();
+void call_test(void (*test_func)(), const char *msg);
 struct stats
 {
     int magical_bytes;
@@ -69,6 +71,7 @@ area *find_last_block()
 
 int main(int argc, char **argv)
 {
+    call_test(test_bigger_than_available_malloc, "request more memory malloc");
     return 0;
 }
 
@@ -263,7 +266,7 @@ void reduce_heap_size_if_possible()
     }
 }
 
-void call_test(void *(test_func)(), const char *msg)
+void call_test(void (*test_func)(), const char *msg)
 {
     pid_t pid = fork();
     if (pid == 0)
@@ -284,4 +287,21 @@ void call_test(void *(test_func)(), const char *msg)
             printf("%s passed\n", msg);
         }
     }
+}
+
+void test_bigger_than_available_malloc()
+{
+    uint16_t *ptr = (uint16_t *)an_malloc(5000);
+    area *first_block = (void *)ptr - sizeof(area);
+    for (uint16_t i = 0; i <= 2499; i = i + 1)
+    {
+        *(ptr + i) = i;
+    }
+    assert(first_block->marker == BLOCK_MARKER);
+    assert(*ptr == 0);
+    assert(*(ptr + 2) == 2);
+    assert(*(ptr + 2499) == 2499);
+
+    assert(*((uint8_t *)ptr + 4999) == (2499 >> 8));
+    assert(*((uint8_t *)ptr + 4998) == (2499 & 0xFF));
 }
